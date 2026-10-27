@@ -38,9 +38,17 @@ It prints one line per check. Fix the failures yourself: the agent may explain a
 
 ## How to start it
 <!-- The exact command, so the lecturer can run your server too. -->
+npm run --silent mcp
 
 ## Session transcript
 <!-- Paste one full session: initialize, the reply, tools/list, one good tools/call, one that fails. -->
 
 ## The description experiment
 <!-- Three sentences: what you changed in the description, whether the model chose the tool differently, and why you think so. -->
+I changed the find_lecture description from a detailed explanation to "Provides information about course lectures."
+
+In the simulated test, the agent selected find_lecture for the question "What does lecture 7 cover?" in both cases.
+
+The detailed description should help the model choose the correct tool more reliably because it explains the expected input and output.
+
+Note: This experiment was simulated because Gemini CLI was unavailable.
