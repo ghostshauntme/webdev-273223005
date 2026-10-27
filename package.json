@@ -7,8 +7,10 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "mcp": "node mcp-server/server.js"
+    "test": "node --test test/*.test.mjs",
+    "mcp": "node mcp-server/server.js",
+    "start": "node src/server.mjs",
+    "setup": "node scripts/seed-account.mjs"
   },
   "repository": {
     "type": "git",
@@ -20,5 +22,7 @@
   "bugs": {
     "url": "https://github.com/ghostshauntme/webdev-273223005/issues"
   },
-  "homepage": "https://github.com/ghostshauntme/webdev-273223005#readme"
+  "homepage": "https://github.com/ghostshauntme/webdev-273223005#readme",
+  "private": true,
+  "type": "module"
 }
