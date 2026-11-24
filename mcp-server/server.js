@@ -1,3 +1,12 @@
+import { openDatabase } from '../src/data/db.mjs';
+import { currentUser } from '../src/services/auth.mjs';
+import { listUpcomingEvents } from '../src/services/events.mjs';
+import {
+  listMyRegistrations,
+  registerForEvent,
+  RegistrationError
+} from '../src/services/registrations.mjs';
+
 import readline from 'node:readline';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -6,7 +15,7 @@ const lectures = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'lectures.json'), 'utf8')
 );
 
-// Our two tools
+// Available tools
 const tools = [
   {
     name: 'find_lecture',
@@ -39,6 +48,102 @@ const tools = [
     }
   }
 ];
+
+tools.push(
+  {
+    name: 'upcoming_events',
+    description: 'List upcoming club events and available places.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      additionalProperties: false
+    }
+  },
+  {
+    name: 'my_registrations',
+    description: 'List registrations of the authenticated user.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      additionalProperties: false
+    }
+  },
+  {
+    name: 'register_for_event',
+    description: 'Reserve a place for the authenticated user.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        event_id: {
+          type: 'integer',
+          minimum: 1
+        }
+      },
+      required: ['event_id'],
+      additionalProperties: false
+    }
+  }
+);
+
+let db;
+
+function handleProjectTool(id, name, args) {
+  const token = process.env.MCP_SESSION_TOKEN || '';
+
+  if (!/^[a-f0-9]{64}$/.test(token)) {
+    return textResult(id, 'Authentication required', true);
+  }
+
+  try {
+    db ??= openDatabase();
+
+    const user = currentUser(db, {
+      headers: {
+        cookie: `club_session=${token}`
+      }
+    });
+
+    if (!user) {
+      return textResult(id, 'Authentication required', true);
+    }
+
+    if (name === 'upcoming_events') {
+      return textResult(
+        id,
+        JSON.stringify(listUpcomingEvents(db))
+      );
+    }
+
+    if (name === 'my_registrations') {
+      return textResult(
+        id,
+        JSON.stringify(listMyRegistrations(db, user.id))
+      );
+    }
+
+    if (name === 'register_for_event') {
+      if (!Number.isSafeInteger(args.event_id) ||
+          args.event_id <= 0) {
+        return protocolError(id, -32602, 'Invalid event ID');
+      }
+
+      const registration = registerForEvent(
+        db, user.id, args.event_id
+      );
+
+      return textResult(
+        id,
+        JSON.stringify(registration)
+      );
+    }
+  } catch (error) {
+    if (error instanceof RegistrationError) {
+      return textResult(id, error.message, true);
+    }
+
+    return textResult(id, 'Request failed', true);
+  }
+}
 
 // Send JSON-RPC response
 function send(reply) {
@@ -200,6 +305,14 @@ function handle(msg) {
       return textResult(msg.id, result, false);
     }
 
+    if ([
+      'upcoming_events',
+      'my_registrations',
+      'register_for_event'
+    ].includes(name)) {
+      return handleProjectTool(msg.id, name, args);
+    }
+
     // Unknown tool
     return protocolError(
       msg.id,
@@ -222,7 +335,7 @@ const lines = readline.createInterface({
 });
 
 lines.on('line', (line) => {
-  console.error('got: ' + line);
+  // Do not log potentially sensitive tool arguments.
 
   let msg;
 
