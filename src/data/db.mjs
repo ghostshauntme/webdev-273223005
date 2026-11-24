@@ -160,3 +160,48 @@ export function restoreEvent(db, id) {
   return db.prepare('INSERT OR IGNORE INTO events(id, club_id, title, start_at, capacity) VALUES(?,?,?,?,?)')
     .run(event.id, event.club_id, event.title, event.start_at, event.capacity).changes;
 }
+
+export function findEventById(db, eventId) {
+  return db.prepare(
+    'SELECT id, title, start_at, capacity FROM events WHERE id=?'
+  ).get(eventId);
+}
+
+export function countRegistrations(db, eventId) {
+  return db.prepare(
+    'SELECT COUNT(*) AS total FROM registrations WHERE event_id=?'
+  ).get(eventId).total;
+}
+
+export function findRegistration(db, userId, eventId) {
+  return db.prepare(
+    'SELECT * FROM registrations WHERE user_id=? AND event_id=?'
+  ).get(userId, eventId);
+}
+
+export function insertRegistration(db, userId, eventId) {
+  db.prepare(
+    'INSERT INTO registrations(user_id, event_id, created_at) VALUES(?,?,?)'
+  ).run(userId, eventId, new Date().toISOString());
+
+  return findRegistration(db, userId, eventId);
+}
+
+export function deleteRegistration(db, userId, eventId) {
+  return db.prepare(
+    'DELETE FROM registrations WHERE user_id=? AND event_id=?'
+  ).run(userId, eventId).changes;
+}
+
+export function withTransaction(db, action) {
+  db.exec('BEGIN IMMEDIATE');
+
+  try {
+    const result = action();
+    db.exec('COMMIT');
+    return result;
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+}
