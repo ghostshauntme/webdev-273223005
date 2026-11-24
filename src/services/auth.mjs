@@ -37,3 +37,25 @@ export function sessionCookie(req, token) {
 export function clearSessionCookie(req) {
   return `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${cookieSecure(req) ? '; Secure' : ''}`;
 }
+
+export function createUserSession(db, user) {
+  const token = randomBytes(32).toString('hex');
+
+  storeSession(
+    db, digest(token), user.id,
+    Date.now() + MAX_AGE_SECONDS * 1000
+  );
+
+  return { token, user };
+}
+
+export function confirmPassword(db, user, password) {
+  const account = findUserByEmail(db, user.email);
+
+  return Boolean(
+    account &&
+    account.id === user.id &&
+    typeof password === 'string' &&
+    verifyPassword(password, account.password_hash)
+  );
+}

@@ -93,6 +93,24 @@ export function openDatabase(file = process.env.DB_PATH || 'data/club-events.db'
   }
 
 
+  if (!db.prepare("SELECT value FROM app_meta WHERE key='migration_002'").get()) {
+    db.exec('BEGIN');
+    try {
+      const sql = readFileSync(
+        new URL('./migrations/002_google_accounts.sql', import.meta.url),
+        'utf8'
+      );
+      db.exec(sql);
+      db.prepare(
+        'INSERT INTO app_meta(key,value) VALUES(?,?)'
+      ).run('migration_002', 'applied');
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
   if (!db.prepare("SELECT value FROM app_meta WHERE key='seeded'").get()) {
     db.exec('BEGIN');
     try {
@@ -225,4 +243,19 @@ export function insertEvent(db, title, date, capacity) {
   ).run(title, date, capacity);
 
   return findEventById(db, Number(result.lastInsertRowid));
+}
+
+export function findGoogleAccount(db, sub) {
+  return db.prepare(`
+    SELECT u.id, u.email, u.role
+    FROM google_accounts g
+    JOIN users u ON u.id = g.user_id
+    WHERE g.google_sub = ?
+  `).get(sub);
+}
+
+export function linkGoogleAccount(db, sub, userId) {
+  db.prepare(
+    'INSERT INTO google_accounts(google_sub,user_id) VALUES(?,?)'
+  ).run(sub, userId);
 }

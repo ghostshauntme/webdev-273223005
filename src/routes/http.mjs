@@ -1,3 +1,4 @@
+import { createGoogleFlow } from '../services/google-flow.mjs';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -44,10 +45,24 @@ async function sendPage(res, key) {
 }
 
 export function createApp(db) {
+  const googleFlow = createGoogleFlow(db);
   return createServer(async (req, res) => {
     try {
       const route = new URL(req.url || '/', 'http://localhost').pathname;
       const user = currentUser(db, req);
+
+      if (
+          (req.method === 'GET' &&
+            ['/auth/google/start', '/auth/google/callback'].includes(route)) ||
+          (req.method === 'POST' && route === '/auth/google/start')
+      ) {
+        return await googleFlow(
+          req, res,
+          new URL(req.url, 'http://localhost'),
+          user
+        );
+      }
+
       if (req.method === 'GET' && route === '/') return redirect(res, user ? '/events' : '/login');
       if (req.method === 'GET' && route === '/login') {
         if (user) return redirect(res, '/events');

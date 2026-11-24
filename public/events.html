@@ -17,4 +17,10 @@
   </form>
   <p id="create-message" role="status"></p>
 </section>
-<section id="events" class="grid" aria-label="Upcoming club events"></section><footer>Events are loaded live from SQLite.</footer></main><script src="/app.js" defer></script></body></html>
+<section id="events" class="grid" aria-label="Upcoming club events"></section><form method="post" action="/auth/google/start?link=1">
+  <h2>Link Google account</h2>
+  <label for="link-password">Confirm your current password</label>
+  <input id="link-password" name="password"
+    type="password" autocomplete="current-password" required>
+  <button type="submit">Link Google account</button>
+</form><footer>Events are loaded live from SQLite.</footer></main><script src="/app.js" defer></script></body></html>

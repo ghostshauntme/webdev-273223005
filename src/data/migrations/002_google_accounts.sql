@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS google_accounts (
+  google_sub TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL UNIQUE
+    REFERENCES users(id) ON DELETE CASCADE
+);
