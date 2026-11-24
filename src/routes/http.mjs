@@ -1,3 +1,4 @@
+import { suggestPoster } from '../services/poster.mjs';
 import { createGoogleFlow } from '../services/google-flow.mjs';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -29,11 +30,11 @@ function redirect(res, destination) {
   res.writeHead(302, { Location: destination, 'Cache-Control': 'no-store' });
   res.end();
 }
-async function bodyAsJson(req) {
+async function bodyAsJson(req, limit = 8192) {
   let data = '';
   for await (const chunk of req) {
     data += chunk;
-    if (data.length > 8192) throw new Error('Request too large');
+    if (data.length > limit) throw new Error('Request too large');
   }
   return JSON.parse(data || '{}');
 }
@@ -88,6 +89,30 @@ export function createApp(db) {
         if (!user) return json(res, 401, { error: 'Sign in first' });
         return json(res, 200, { events: listUpcomingEvents(db) });
       }
+      if (req.method === 'POST' && route === '/api/poster/suggest') {
+        if (!user) {
+          return json(res, 401, { error: 'Sign in first' });
+        }
+
+        if (user.role !== 'organizer') {
+          return json(res, 403, { error: 'Organizers only' });
+        }
+
+        let payload;
+
+        try {
+          payload = await bodyAsJson(req, 2900000);
+        } catch {
+          return json(res, 400, { error: 'Invalid poster upload' });
+        }
+
+        const result = await suggestPoster(
+          payload?.image, payload?.mimeType
+        );
+
+        return json(res, 200, result);
+      }
+
       if (req.method === 'POST' && route === '/api/events') {
         if (!user) {
           return json(res, 401, { error: 'Sign in first' });

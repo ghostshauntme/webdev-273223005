@@ -27,6 +27,11 @@ export function createEvent(db, user, input) {
     ? Date.parse(input.date) : NaN;
 
   const capacity = input?.capacity;
+  const location = input?.location ?? '';
+
+  if (typeof location !== 'string' || location.length > 200) {
+    throw new EventError(400, 'Invalid event location');
+  }
 
   if (!title || title.length > 200 ||
       !Number.isFinite(date) || date <= Date.now() ||
@@ -35,6 +40,6 @@ export function createEvent(db, user, input) {
   }
 
   return insertEvent(
-    db, title, new Date(date).toISOString(), capacity
+    db, title, new Date(date).toISOString(), capacity, location.trim()
   );
 }

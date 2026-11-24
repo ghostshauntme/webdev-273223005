@@ -3,12 +3,26 @@
 <body><main class="shell"><nav class="topbar"><div><span class="eyebrow">INFORMATICS CLUB</span><h1>Upcoming events</h1></div><button id="logout" class="secondary" type="button">Sign out</button></nav>
 <p class="subtitle">Find student activities and available places.</p><p id="message" class="message" role="status">Loading events...</p><section id="organizer-panel" hidden>
   <h2>Create event</h2>
+  <label>Event poster
+    <input id="poster-file" type="file"
+      accept="image/png,image/jpeg,image/webp">
+  </label>
+  <p>Only upload posters without personal information.
+    The selected image will be sent to Google Gemini
+    when you request suggestions.</p>
+  <button id="suggest-poster" type="button">
+    Suggest details with AI
+  </button>
+  <p id="poster-message" role="status"></p>
   <form id="create-event">
     <label>Event title
       <input id="event-title" required maxlength="200">
     </label>
     <label>Date and time
       <input id="event-date" type="datetime-local" required>
+    </label>
+    <label>Location
+      <input id="event-location" maxlength="200">
     </label>
     <label>Capacity
       <input id="event-capacity" type="number" min="1" required>

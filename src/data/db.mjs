@@ -111,6 +111,25 @@ export function openDatabase(file = process.env.DB_PATH || 'data/club-events.db'
     }
   }
 
+  if (!db.prepare("SELECT value FROM app_meta WHERE key='migration_003'").get()) {
+    db.exec('BEGIN');
+    try {
+      db.exec(readFileSync(
+        new URL('./migrations/003_event_location.sql', import.meta.url),
+        'utf8'
+      ));
+
+      db.prepare(
+        'INSERT INTO app_meta(key,value) VALUES(?,?)'
+      ).run('migration_003', 'applied');
+
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+
   if (!db.prepare("SELECT value FROM app_meta WHERE key='seeded'").get()) {
     db.exec('BEGIN');
     try {
@@ -155,7 +174,7 @@ export function removeSession(db, tokenHash) {
 
 export function getUpcomingEvents(db, now = new Date().toISOString()) {
   return db.prepare(`
-    SELECT e.id, e.title, e.start_at AS date,
+    SELECT e.id, e.title, e.location, e.start_at AS date,
            e.capacity - COUNT(r.user_id) AS free_places
     FROM events e LEFT JOIN registrations r ON r.event_id=e.id
     WHERE e.start_at > ?
@@ -181,7 +200,7 @@ export function restoreEvent(db, id) {
 
 export function findEventById(db, eventId) {
   return db.prepare(
-    'SELECT id, title, start_at, capacity FROM events WHERE id=?'
+    'SELECT id, title, start_at, capacity, location FROM events WHERE id=?'
   ).get(eventId);
 }
 
@@ -237,10 +256,10 @@ export function getUserRegistrations(db, userId) {
   `).all(userId);
 }
 
-export function insertEvent(db, title, date, capacity) {
+export function insertEvent(db, title, date, capacity, location = '') {
   const result = db.prepare(
-    'INSERT INTO events(club_id,title,start_at,capacity) VALUES(1,?,?,?)'
-  ).run(title, date, capacity);
+    'INSERT INTO events(club_id,title,start_at,capacity,location) VALUES(1,?,?,?,?)'
+  ).run(title, date, capacity, location);
 
   return findEventById(db, Number(result.lastInsertRowid));
 }
