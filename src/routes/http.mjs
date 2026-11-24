@@ -4,6 +4,13 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { authenticate, clearSessionCookie, currentUser, endSession, sessionCookie } from '../services/auth.mjs';
 import { listUpcomingEvents } from '../services/events.mjs';
+import {
+  registerForEvent,
+  cancelRegistration,
+  listMyRegistrations,
+  RegistrationError
+} from '../services/registrations.mjs';
+
 
 const publicDir = fileURLToPath(new URL('../../public/', import.meta.url));
 const pages = {
@@ -70,9 +77,64 @@ export function createApp(db) {
         if (!user) return json(res, 401, { error: 'Sign in first' });
         return json(res, 200, { user });
       }
+
+      // List the current user's registrations
+      if (req.method === 'GET' && route === '/api/registrations') {
+        if (!user) {
+          return json(res, 401, { error: 'Sign in first' });
+        }
+
+        return json(res, 200, {
+          registrations: listMyRegistrations(db, user.id)
+        });
+      }
+
+      // Register for an event or cancel a registration
+      const registrationRoute = route.match(
+        /^\/api\/events\/(\d+)\/register$/
+      );
+
+      if (
+        registrationRoute &&
+        (req.method === 'POST' || req.method === 'DELETE')
+      ) {
+        if (!user) {
+          return json(res, 401, { error: 'Sign in first' });
+        }
+
+        const eventId = Number(registrationRoute[1]);
+
+        if (!Number.isSafeInteger(eventId) || eventId <= 0) {
+          return json(res, 400, { error: 'Invalid event ID' });
+        }
+
+        if (req.method === 'POST') {
+          const registration = registerForEvent(
+            db, user.id, eventId
+          );
+
+          return json(res, 201, { registration });
+        }
+
+        const result = cancelRegistration(
+          db, user.id, eventId
+        );
+
+        return json(res, 200, result);
+      }
+
+
       return json(res, 404, { error: 'Not found' });
+
     } catch (error) {
+      if (error instanceof RegistrationError && !res.headersSent) {
+        return json(res, error.status, {
+          error: error.message
+        });
+      }
+
       console.error('Request failed:', error.message);
+
       if (!res.headersSent) json(res, 500, { error: 'Internal server error' });
       else res.end();
     }

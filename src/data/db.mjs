@@ -205,3 +205,16 @@ export function withTransaction(db, action) {
     throw error;
   }
 }
+
+export function getUserRegistrations(db, userId) {
+  return db.prepare(`
+    SELECT e.id AS event_id,
+           e.title,
+           e.start_at AS date,
+           r.created_at
+    FROM registrations r
+    JOIN events e ON e.id = r.event_id
+    WHERE r.user_id = ?
+    ORDER BY e.start_at ASC, e.id ASC
+  `).all(userId);
+}

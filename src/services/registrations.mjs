@@ -5,7 +5,8 @@ import {
   findRegistration,
   insertRegistration,
   deleteRegistration,
-  withTransaction
+    withTransaction,
+  getUserRegistrations
 } from '../data/db.mjs';
 
 export class RegistrationError extends Error {
@@ -53,4 +54,8 @@ export function cancelRegistration(db, userId, eventId) {
 
     return { cancelled: true };
   });
+}
+
+export function listMyRegistrations(db, userId) {
+  return getUserRegistrations(db, userId);
 }
