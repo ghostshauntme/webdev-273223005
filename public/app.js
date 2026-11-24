@@ -143,6 +143,62 @@ if (list) {
     }
   }
 
+  async function setupOrganizer() {
+    try {
+      const { user } = await api('/api/me');
+
+      if (user.role !== 'organizer') return;
+
+      const panel = document.querySelector('#organizer-panel');
+      const createForm = document.querySelector('#create-event');
+      const status = document.querySelector('#create-message');
+
+      panel.hidden = false;
+
+      createForm.addEventListener('submit', async event => {
+        event.preventDefault();
+
+        const button = createForm.querySelector('button');
+        button.disabled = true;
+        status.textContent = 'Creating event...';
+
+        try {
+          const response = await fetch('/api/events', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: document.querySelector('#event-title').value,
+              date: new Date(
+                document.querySelector('#event-date').value
+              ).toISOString(),
+              capacity: Number(
+                document.querySelector('#event-capacity').value
+              )
+            })
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Creation failed');
+          }
+
+          createForm.reset();
+          status.textContent = 'Event created successfully!';
+          await load();
+        } catch (error) {
+          status.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      });
+    } catch (error) {
+      message.textContent = error.message;
+    }
+  }
+
+  setupOrganizer();
   load();
 
   document.querySelector('#logout').addEventListener(

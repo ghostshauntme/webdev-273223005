@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { authenticate, clearSessionCookie, currentUser, endSession, sessionCookie } from '../services/auth.mjs';
-import { listUpcomingEvents } from '../services/events.mjs';
+import { listUpcomingEvents, createEvent, EventError } from '../services/events.mjs';
 import {
   registerForEvent,
   cancelRegistration,
@@ -73,6 +73,28 @@ export function createApp(db) {
         if (!user) return json(res, 401, { error: 'Sign in first' });
         return json(res, 200, { events: listUpcomingEvents(db) });
       }
+      if (req.method === 'POST' && route === '/api/events') {
+        if (!user) {
+          return json(res, 401, { error: 'Sign in first' });
+        }
+
+        if (user.role !== 'organizer') {
+          return json(res, 403, { error: 'Organizers only' });
+        }
+
+        let payload;
+
+        try {
+          payload = await bodyAsJson(req);
+        } catch {
+          return json(res, 400, { error: 'Invalid JSON' });
+        }
+
+        return json(res, 201, {
+          event: createEvent(db, user, payload)
+        });
+      }
+
       if (req.method === 'GET' && route === '/api/me') {
         if (!user) return json(res, 401, { error: 'Sign in first' });
         return json(res, 200, { user });
@@ -127,7 +149,7 @@ export function createApp(db) {
       return json(res, 404, { error: 'Not found' });
 
     } catch (error) {
-      if (error instanceof RegistrationError && !res.headersSent) {
+      if ((error instanceof RegistrationError || error instanceof EventError) && !res.headersSent) {
         return json(res, error.status, {
           error: error.message
         });

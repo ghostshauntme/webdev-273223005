@@ -218,3 +218,11 @@ export function getUserRegistrations(db, userId) {
     ORDER BY e.start_at ASC, e.id ASC
   `).all(userId);
 }
+
+export function insertEvent(db, title, date, capacity) {
+  const result = db.prepare(
+    'INSERT INTO events(club_id,title,start_at,capacity) VALUES(1,?,?,?)'
+  ).run(title, date, capacity);
+
+  return findEventById(db, Number(result.lastInsertRowid));
+}
