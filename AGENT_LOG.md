@@ -7,3 +7,17 @@
 - Gap discovered: the initial acceptance criterion did not specify the order of upcoming events.
 - Updated: AC-10 now requires chronological order; SQL uses date ordering and the test asserts it.
 - Usage: the course CLI was unavailable, so no CLI session statistics are available.
+
+## 2026-11-24–25 - Exercise 3 implementation
+
+- Goal: implement AC-1 through AC-8 from SPEC.md.
+- Reviewed and approved plan: database migration, registration service, HTTP API, browser UI, organizer event creation, Google OAuth, Gemini poster suggestions, MCP tools, testing and documentation.
+- The student approved the plan before implementation and reviewed staged changes at each checkpoint.
+- Separate approval was given for authentication changes, Google configuration, Gemini integration and the three project MCP tools.
+- Unexpected changes: corrected .gitignore to track src/data, changed date formatting and removed raw MCP request logging.
+- The existing registrations table required a timestamp and index migration rather than a new table.
+- Mutation test: disabling the capacity rule caused three tests to fail. Restoring the rule made the tests pass again.
+- Results: 56 passing tests, 100% service line, branch and function coverage, and 18/18 Exercise 3 checks.
+- Additional coverage tests were implemented because the existing CI workflow already enforces coverage thresholds.
+- Google and Gemini were tested using simulated provider responses, not live credentials.
+- Manual verification and remote CI verification remain pending.

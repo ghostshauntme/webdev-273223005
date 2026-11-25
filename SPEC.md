@@ -43,7 +43,13 @@ Club events.
 Plain HTML, CSS and client-side JavaScript. Planned screens: local/Google sign-in, upcoming event list, event detail and registration screen, organizer event management. Each screen needs loading, empty, error and success states. Only sign-in and the database-backed event list are implemented in slice 1. See `docs/UI.md` for the future checklist.
 
 ## Architecture
-Slice 1 requests travel from `src/routes/http.mjs` to `src/services/auth.mjs` or `src/services/events.mjs`, then to SQL in `src/data/db.mjs`. Future MCP tools must call the same services. The Google provider and poster model are designed but intentionally not implemented in Exercise 2.
+- The browser sends a POST request from `public/app.js` to `/api/events/:id/register`.
+- The HTTP route in `src/routes/http.mjs` checks the current user through `src/services/auth.mjs`.
+- The registration service in `src/services/registrations.mjs` checks event capacity and existing registrations.
+- SQL queries run in `src/data/db.mjs` inside a database transaction.
+- A successful registration returns HTTP 201. A full event returns HTTP 409 without inserting a registration.
+- The MCP server calls the same registration service as the HTTP API.
+- The registrations table already existed after Exercise 2, so migration 001 added a timestamp and an index instead of creating a new table.
 
 ## Acceptance criteria
 - [AC-1] A signed-in member opening the events list sees only future events sorted by date, with available places displayed.
@@ -63,8 +69,14 @@ Slice 1 requests travel from `src/routes/http.mjs` to `src/services/auth.mjs` or
 ## Traceability
 | Criterion | Test |
 | --- | --- |
-| AC-1 | Planned full-feature test in Exercise 3 |
-| AC-2 to AC-8 | Planned full-feature tests in Exercises 3-5 |
+| AC-1 | `test/mcp-project.test.mjs`, `test/slice1.test.mjs` |
+| AC-2 | `test/registrations.test.mjs`, `test/registrations-api.test.mjs` |
+| AC-3 | `test/registrations.test.mjs`, `test/registrations-api.test.mjs` |
+| AC-4 | `test/registrations.test.mjs`, `test/registrations-api.test.mjs` |
+| AC-5 | `test/events.test.mjs` |
+| AC-6 | `test/google-auth.test.mjs`, `test/google-flow-coverage.test.mjs` |
+| AC-7 | `test/poster.test.mjs`, `test/poster-api.test.mjs` |
+| AC-8 | `test/mcp-project.test.mjs` |
 | AC-9 | `test/slice1.test.mjs`: redirect and unauthorized API |
 | AC-10 | `test/slice1.test.mjs`: seeded sign-in and sorted list |
 | AC-11 | `test/slice1.test.mjs`: database deletion reflected in API |
