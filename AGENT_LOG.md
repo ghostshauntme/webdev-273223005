@@ -21,3 +21,9 @@
 - Additional coverage tests were implemented because the existing CI workflow already enforces coverage thresholds.
 - Google and Gemini were tested using simulated provider responses, not live credentials.
 - Manual verification and remote CI verification remain pending.
+
+### Manual verification - 2026-11-25
+- Browser: sign-in, upcoming events, reservation, cancellation, available places and logout verified successfully.
+- curl: unauthorized request 401, registration 201, full event 409, cancellation by another user 403, own cancellation 200.
+- All five manual API checks passed using an isolated in-memory database.
+- Remote CI verification remains pending.
