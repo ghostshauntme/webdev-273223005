@@ -1,6 +1,7 @@
 
 import {
   findEventById,
+  lockEvent,
   countRegistrations,
   findRegistration,
   insertRegistration,
@@ -18,8 +19,9 @@ export class RegistrationError extends Error {
 }
 
 export function registerForEvent(db, userId, eventId) {
-  return withTransaction(db, () => {
-    const event = findEventById(db, eventId);
+  return withTransaction(db, async (db) => {
+    await lockEvent(db, eventId);
+    const event = await findEventById(db, eventId);
 
     if (!event) {
       throw new RegistrationError('Event not found', 404);
@@ -29,33 +31,34 @@ export function registerForEvent(db, userId, eventId) {
       throw new RegistrationError('This event has already started', 409);
     }
 
-    if (findRegistration(db, userId, eventId)) {
+    if (await findRegistration(db, userId, eventId)) {
       throw new RegistrationError('Already registered', 409);
     }
 
-    if (countRegistrations(db, eventId) >= event.capacity) {
+    if (await countRegistrations(db, eventId) >= event.capacity) {
       throw new RegistrationError('This event is full', 409);
     }
 
-    return insertRegistration(db, userId, eventId);
+    return await insertRegistration(db, userId, eventId);
   });
 }
 
 export function cancelRegistration(db, userId, eventId) {
-  return withTransaction(db, () => {
-    if (!findRegistration(db, userId, eventId)) {
+  return withTransaction(db, async (db) => {
+    await lockEvent(db, eventId);
+    if (!(await findRegistration(db, userId, eventId))) {
       throw new RegistrationError(
         'You can only cancel your own registration',
         403
       );
     }
 
-    deleteRegistration(db, userId, eventId);
+    await deleteRegistration(db, userId, eventId);
 
     return { cancelled: true };
   });
 }
 
-export function listMyRegistrations(db, userId) {
+export async function listMyRegistrations(db, userId) {
   return getUserRegistrations(db, userId);
 }

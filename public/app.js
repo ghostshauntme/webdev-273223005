@@ -1,3 +1,12 @@
+async function responseJson(response, fallback) {
+  const data = await response.json().catch(() => null);
+  if (!response.ok || !data) throw new Error(data?.error || fallback);
+  return data;
+}
+
+function errorMessage(error, fallback) {
+  return error instanceof TypeError ? fallback : error.message;
+}
 
 const form = document.querySelector('#login-form');
 const message = document.querySelector('#message');
@@ -20,13 +29,11 @@ if (form) {
         })
       });
 
-      if (!response.ok) {
-        throw new Error((await response.json()).error);
-      }
+      await responseJson(response, 'Sign-in is unavailable. Try again.');
 
       window.location.assign('/events');
     } catch (error) {
-      message.textContent = error.message;
+      message.textContent = errorMessage(error, 'Could not connect. Try again.');
       button.disabled = false;
     }
   });
@@ -46,18 +53,11 @@ if (list) {
       throw new Error('Sign in first');
     }
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Request failed');
-    }
-
-    return data;
+    return responseJson(response, 'The request failed. Try again.');
   }
 
-  async function load(notice = '') {
+  async function load(notice = '', focusEventId) {
     message.textContent = 'Loading events...';
-    list.replaceChildren();
 
     try {
       const [{ events }, { registrations }] = await Promise.all([
@@ -65,12 +65,15 @@ if (list) {
         api('/api/registrations')
       ]);
 
+      const cards = document.createDocumentFragment();
+      let nextFocus;
       const registered = new Set(
         registrations.map(r => r.event_id)
       );
 
       if (!events.length) {
-        message.textContent = 'There are no upcoming events.';
+        list.replaceChildren();
+        message.textContent = 'There are no upcoming events. Check back later.';
         return;
       }
 
@@ -103,6 +106,7 @@ if (list) {
         button.disabled = !own && event.free_places <= 0;
 
         button.addEventListener('click', async () => {
+          const restoreFocus = document.activeElement === button;
           button.disabled = true;
           message.textContent = 'Please wait...';
 
@@ -115,11 +119,16 @@ if (list) {
             await load(
               own
                 ? 'Registration cancelled.'
-                : 'Registration confirmed!'
+                : 'Registration confirmed!',
+              restoreFocus ? event.id : undefined
             );
           } catch (error) {
-            message.textContent = error.message;
+            message.textContent = errorMessage(error, 'Could not connect. Try again.');
+          } finally {
             button.disabled = false;
+            if (restoreFocus && button.isConnected && document.activeElement === document.body) {
+              button.focus();
+            }
           }
         });
 
@@ -138,14 +147,19 @@ if (list) {
         }
 
         article.append(button);
-        list.append(article);
+        cards.append(article);
+        if (event.id === focusEventId) nextFocus = button;
       }
 
+      const focusCanBeRestored = list.contains(document.activeElement) ||
+        document.activeElement === document.body;
+      list.replaceChildren(cards);
+      if (focusCanBeRestored) nextFocus?.focus();
       message.textContent = notice ||
         `${events.length} upcoming events`;
 
     } catch (error) {
-      message.textContent = error.message;
+      message.textContent = errorMessage(error, 'Could not connect. Try again.');
     }
   }
 
@@ -268,7 +282,8 @@ if (list) {
         }
       });
     } catch (error) {
-      message.textContent = error.message;
+      document.querySelector('#account-message').textContent =
+        errorMessage(error, 'Could not load account details. Refresh to retry.');
     }
   }
 
@@ -281,7 +296,7 @@ if (list) {
         await api('/api/logout', 'POST');
         window.location.assign('/login');
       } catch (error) {
-        message.textContent = error.message;
+        message.textContent = errorMessage(error, 'Could not connect. Try again.');
       }
     }
   );

@@ -27,3 +27,16 @@
 - curl: unauthorized request 401, registration 201, full event 409, cancellation by another user 403, own cancellation 200.
 - All five manual API checks passed using an isolated in-memory database.
 - Remote CI verification remains pending.
+
+## 2026-11-25 — Exercise 4
+
+- Добавлены публичный `/health`, проверка конфигурации старта, Dockerfile, настройка Render и тесты развёртывания.
+- Проверены HTTP-обработчик на SQLite в памяти, отказы старта при неверной конфигурации, ограничения доступа, cookie и заголовки. Логика состояний списка проверена с тестовыми DOM и fetch.
+- Exercise 4 дал 26/29 в копии без секретов. Ожидаются браузерные доказательства и адрес Render. Полные прогоны тестов и покрытия блокирует TCP bind с `EPERM`. Docker socket недоступен.
+- Команды и ручные сценарии записаны в `READINESS.md`.
+
+### Повторная проверка Exercise 4
+
+- Обработчик JSON ограничивает размер в байтах, принимает объект и возвращает HTTP 400 для `null` и слишком большого тела. Добавлены проверки диагностики недоступной БД и ответов HTTP.
+- На потоке HTTP/1.1 в памяти подтверждены `/health`, 302, 401, 404 и 400. Пять некорректных конфигураций дали код 1 при прямом запуске сервера.
+- Штатные тесты и coverage снова упёрлись в ограничения среды. Результат Exercise 4 и точные шаги проверки Render и UI записаны в `READINESS.md`.

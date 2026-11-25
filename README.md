@@ -69,3 +69,7 @@ When an exercise is done, commit and push, so your work is on GitHub and CI has 
 ## Save your free quota
 
 Stop the codespace when you finish (**Code → Codespaces → … → Stop codespace**) and delete codespaces you no longer need.
+
+## Exercise 4
+
+Инструкции запуска на Node.js 22, настройки Render и проверки после деплоя находятся в [READINESS.md](READINESS.md). Имена переменных и безопасные значения по умолчанию перечислены в [.env.example](.env.example). Для production используйте `npm run start:production` или `Dockerfile`.

@@ -1,6 +1,6 @@
 import { getUpcomingEvents, insertEvent } from '../data/db.mjs';
 
-export function listUpcomingEvents(db) {
+export async function listUpcomingEvents(db) {
   return getUpcomingEvents(db);
 }
 
@@ -11,7 +11,7 @@ export class EventError extends Error {
   }
 }
 
-export function createEvent(db, user, input) {
+export async function createEvent(db, user, input) {
   if (!user) {
     throw new EventError(401, 'Sign in first');
   }

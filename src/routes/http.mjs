@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { checkDatabase } from '../data/db.mjs';
 import { authenticate, clearSessionCookie, currentUser, endSession, sessionCookie } from '../services/auth.mjs';
 import { listUpcomingEvents, createEvent, EventError } from '../services/events.mjs';
 import {
@@ -31,26 +32,49 @@ function redirect(res, destination) {
   res.end();
 }
 async function bodyAsJson(req, limit = 8192) {
-  let data = '';
-  for await (const chunk of req) {
-    data += chunk;
-    if (data.length > limit) throw new Error('Request too large');
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req.iterator({ destroyOnReturn: false })) {
+    size += chunk.length;
+    if (size > limit) {
+      req.resume();
+      throw new Error('Request too large');
+    }
+    chunks.push(chunk);
   }
-  return JSON.parse(data || '{}');
+  const payload = size ? JSON.parse(Buffer.concat(chunks, size).toString('utf8')) : {};
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('Expected a JSON object');
+  }
+  return payload;
 }
 async function sendPage(res, key) {
   const [name, contentType] = pages[key];
   const contents = await readFile(join(publicDir, name));
-  res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+  res.writeHead(200, { 'Content-Type': contentType, 'Cache-Control': 'no-store' });
   res.end(contents);
 }
 
 export function createApp(db) {
   const googleFlow = createGoogleFlow(db);
   return createServer(async (req, res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Content-Security-Policy',
+      "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self' https://accounts.google.com; object-src 'none'");
+
     try {
       const route = new URL(req.url || '/', 'http://localhost').pathname;
-      const user = currentUser(db, req);
+      if (req.method === 'GET' && route === '/health') {
+        try {
+          await checkDatabase(db);
+        } catch {
+          return json(res, 503, { status: 'unavailable' });
+        }
+        return json(res, 200, { status: 'ok' });
+      }
+
+      const user = await currentUser(db, req);
 
       if (
           (req.method === 'GET' &&
@@ -77,17 +101,17 @@ export function createApp(db) {
       if (req.method === 'POST' && route === '/api/login') {
         let payload;
         try { payload = await bodyAsJson(req); } catch { return json(res, 400, { error: 'Invalid JSON' }); }
-        const signedIn = authenticate(db, payload.email, payload.password);
+        const signedIn = await authenticate(db, payload.email, payload.password);
         if (!signedIn) return json(res, 401, { error: 'Invalid email or password' });
         return json(res, 200, { user: signedIn.user }, { 'Set-Cookie': sessionCookie(req, signedIn.token) });
       }
       if (req.method === 'POST' && route === '/api/logout') {
-        endSession(db, req);
+        await endSession(db, req);
         return json(res, 200, { ok: true }, { 'Set-Cookie': clearSessionCookie(req) });
       }
       if (req.method === 'GET' && route === '/api/events') {
         if (!user) return json(res, 401, { error: 'Sign in first' });
-        return json(res, 200, { events: listUpcomingEvents(db) });
+        return json(res, 200, { events: await listUpcomingEvents(db) });
       }
       if (req.method === 'POST' && route === '/api/poster/suggest') {
         if (!user) {
@@ -131,7 +155,7 @@ export function createApp(db) {
         }
 
         return json(res, 201, {
-          event: createEvent(db, user, payload)
+          event: await createEvent(db, user, payload)
         });
       }
 
@@ -147,7 +171,7 @@ export function createApp(db) {
         }
 
         return json(res, 200, {
-          registrations: listMyRegistrations(db, user.id)
+          registrations: await listMyRegistrations(db, user.id)
         });
       }
 
@@ -171,14 +195,14 @@ export function createApp(db) {
         }
 
         if (req.method === 'POST') {
-          const registration = registerForEvent(
+          const registration = await registerForEvent(
             db, user.id, eventId
           );
 
           return json(res, 201, { registration });
         }
 
-        const result = cancelRegistration(
+        const result = await cancelRegistration(
           db, user.id, eventId
         );
 
@@ -195,7 +219,7 @@ export function createApp(db) {
         });
       }
 
-      console.error('Request failed:', error.message);
+      console.error('Unexpected HTTP request failure.');
 
       if (!res.headersSent) json(res, 500, { error: 'Internal server error' });
       else res.end();

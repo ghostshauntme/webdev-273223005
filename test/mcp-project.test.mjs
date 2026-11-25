@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { closeSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -10,7 +10,7 @@ import {
 } from '../src/data/db.mjs';
 import { authenticate } from '../src/services/auth.mjs';
 
-function setup(t) {
+async function setup(t) {
   const dir = mkdtempSync(join(tmpdir(), 'club-mcp-'));
   const file = join(dir, 'test.db');
   const db = openDatabase(file);
@@ -40,38 +40,44 @@ function setup(t) {
     'UPDATE events SET capacity=1 WHERE id=1'
   ).run();
 
-  const first = authenticate(
+  const first = await authenticate(
     db, 'first@example.test', 'test-password'
   );
 
-  const second = authenticate(
+  const second = await authenticate(
     db, 'second@example.test', 'test-password'
   );
 
   function rpc(method, params, token = '') {
-    const result = spawnSync(
-      process.execPath,
-      ['mcp-server/server.js'],
-      {
-        input: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method,
-          params
-        }) + '\n',
-        encoding: 'utf8',
-        timeout: 5000,
-        env: {
-          ...process.env,
-          DB_PATH: file,
-          MCP_SESSION_TOKEN: token
+    const request = join(dir, 'request.jsonl');
+    const response = join(dir, 'response.jsonl');
+    const errors = join(dir, 'stderr.txt');
+    writeFileSync(request, JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) + '\n');
+    const stdio = [openSync(request, 'r'), openSync(response, 'w'), openSync(errors, 'w')];
+
+    try {
+      const result = spawnSync(
+        process.execPath,
+        ['mcp-server/server.js'],
+        {
+          stdio,
+          timeout: 5000,
+          env: {
+            ...process.env,
+            DB_PATH: file,
+            DATABASE_URL: '',
+            NODE_ENV: 'test',
+            MCP_SESSION_TOKEN: token
+          }
         }
-      }
-    );
+      );
 
-    assert.equal(result.status, 0, result.stderr);
-
-    return JSON.parse(result.stdout.trim());
+      if (result.error) throw result.error;
+      assert.equal(result.status, 0, readFileSync(errors, 'utf8'));
+      return JSON.parse(readFileSync(response, 'utf8').trim());
+    } finally {
+      stdio.forEach(fd => closeSync(fd));
+    }
   }
 
   function call(name, args, token) {
@@ -84,8 +90,8 @@ function setup(t) {
   return { db, first, second, rpc, call };
 }
 
-test('AC-8 MCP exposes all three project tools', t => {
-  const { rpc } = setup(t);
+test('AC-8 MCP exposes all three project tools', async t => {
+  const { rpc } = await setup(t);
 
   const response = rpc('tools/list', {});
 
@@ -104,8 +110,8 @@ test('AC-8 MCP exposes all three project tools', t => {
   }
 });
 
-test('AC-8 MCP rejects unauthenticated callers', t => {
-  const { call } = setup(t);
+test('AC-8 MCP rejects unauthenticated callers', async t => {
+  const { call } = await setup(t);
 
   for (const name of [
     'upcoming_events',
@@ -122,8 +128,8 @@ test('AC-8 MCP rejects unauthenticated callers', t => {
   }
 });
 
-test('AC-8 MCP uses the same capacity rule as HTTP', t => {
-  const { db, first, second, call } = setup(t);
+test('AC-8 MCP uses the same capacity rule as HTTP', async t => {
+  const { db, first, second, call } = await setup(t);
 
   const accepted = call(
     'register_for_event',
@@ -153,8 +159,8 @@ test('AC-8 MCP uses the same capacity rule as HTTP', t => {
   assert.equal(rows[0].user_id, first.user.id);
 });
 
-test('AC-8 MCP lists only the callers own registrations', t => {
-  const { first, second, call } = setup(t);
+test('AC-8 MCP lists only the callers own registrations', async t => {
+  const { first, second, call } = await setup(t);
 
   const reserved = call(
     'register_for_event',
@@ -186,8 +192,8 @@ test('AC-8 MCP lists only the callers own registrations', t => {
   );
 });
 
-test('AC-1 MCP lists upcoming events in date order', t => {
-  const { first, call } = setup(t);
+test('AC-1 MCP lists upcoming events in date order', async t => {
+  const { first, call } = await setup(t);
 
   const result = call(
     'upcoming_events', {}, first.token

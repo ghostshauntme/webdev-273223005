@@ -8,18 +8,17 @@ export function openPostgres(
     throw new Error('DATABASE_URL is required');
   }
 
-  return new pg.Pool({
+  const pool = new pg.Pool({
     connectionString,
     connectionTimeoutMillis: 10000,
     max: 5
   });
+  pool.on('error', () => console.error('An idle PostgreSQL connection failed.'));
+  return pool;
 }
 
 export async function migratePostgres(pool) {
-  const client = await pool.connect();
-
-  try {
-    await client.query('BEGIN');
+  await withTransaction(pool, async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(273223005)');
 
     const sql = readFileSync(
@@ -28,13 +27,7 @@ export async function migratePostgres(pool) {
     );
 
     await client.query(sql);
-    await client.query('COMMIT');
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 export async function findUserByEmail(pool, email) {
@@ -93,7 +86,7 @@ export async function getUpcomingEvents(
 export async function findEventById(pool, eventId) {
   const result = await pool.query(
     `SELECT id,title,start_at,capacity,location
-     FROM events WHERE id=$1`,
+     FROM events WHERE id=$1::bigint`,
     [eventId]
   );
   return result.rows[0];
@@ -121,7 +114,7 @@ export async function countRegistrations(db, eventId) {
 
 export async function findRegistration(db, userId, eventId) {
   const result = await db.query(
-    'SELECT * FROM registrations WHERE user_id=$1 AND event_id=$2',
+    'SELECT * FROM registrations WHERE user_id=$1 AND event_id=$2::bigint',
     [userId, eventId]
   );
   return result.rows[0];
@@ -138,7 +131,7 @@ export async function insertRegistration(db, userId, eventId) {
 
 export async function deleteRegistration(db, userId, eventId) {
   const result = await db.query(
-    'DELETE FROM registrations WHERE user_id=$1 AND event_id=$2',
+    'DELETE FROM registrations WHERE user_id=$1 AND event_id=$2::bigint',
     [userId, eventId]
   );
   return result.rowCount;
@@ -159,22 +152,28 @@ export async function getUserRegistrations(db, userId) {
 export async function withTransaction(pool, action) {
   const client = await pool.connect();
 
+  let discard;
+
   try {
-    await client.query('BEGIN');
+    await client.query('BEGIN ISOLATION LEVEL READ COMMITTED');
     const result = await action(client);
     await client.query('COMMIT');
     return result;
   } catch (error) {
-    await client.query('ROLLBACK');
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      discard = rollbackError;
+    }
     throw error;
   } finally {
-    client.release();
+    client.release(discard);
   }
 }
 
 export async function lockEvent(db, eventId) {
   await db.query(
-    'SELECT id FROM events WHERE id=$1 FOR UPDATE',
+    'SELECT id FROM events WHERE id=$1::bigint FOR UPDATE',
     [eventId]
   );
 }
@@ -252,4 +251,9 @@ export async function seedPostgres(pool) {
       "INSERT INTO app_meta(key,value) VALUES('seeded','yes')"
     );
   });
+}
+
+export async function lockGoogleAccounts(db) {
+  // Serialize the lookup and link across both unique keys (subject and user).
+  await db.query('SELECT pg_advisory_xact_lock(273223005, 1)');
 }

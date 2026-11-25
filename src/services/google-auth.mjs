@@ -2,10 +2,11 @@ import {
   findGoogleAccount,
   findUserByEmail,
   linkGoogleAccount,
+  lockGoogleAccounts,
   withTransaction
 } from '../data/db.mjs';
 
-export function resolveGoogleUser(
+export async function resolveGoogleUser(
   db, profile, currentUser = null, confirmed = false
 ) {
   if (!profile ||
@@ -16,8 +17,9 @@ export function resolveGoogleUser(
     throw new Error('Google identity is not verified');
   }
 
-  return withTransaction(db, () => {
-    const linked = findGoogleAccount(db, profile.sub);
+  return withTransaction(db, async (db) => {
+    await lockGoogleAccounts(db);
+    const linked = await findGoogleAccount(db, profile.sub);
 
     if (linked) {
       if (currentUser && linked.id !== currentUser.id) {
@@ -27,7 +29,7 @@ export function resolveGoogleUser(
       return linked;
     }
 
-    const existing = findUserByEmail(
+    const existing = await findUserByEmail(
       db, profile.email.trim().toLowerCase()
     );
 
@@ -38,8 +40,8 @@ export function resolveGoogleUser(
       throw new Error('Account linking requires confirmation');
     }
 
-    linkGoogleAccount(db, profile.sub, existing.id);
+    await linkGoogleAccount(db, profile.sub, existing.id);
 
-    return findGoogleAccount(db, profile.sub);
+    return await findGoogleAccount(db, profile.sub);
   });
 }

@@ -35,10 +35,10 @@ function setup(t) {
   return db;
 }
 
-test('AC-2 successfully reserves an available place', (t) => {
+test('AC-2 successfully reserves an available place', async (t) => {
   const db = setup(t);
 
-  const result = registerForEvent(db, 1, 1);
+  const result = await registerForEvent(db, 1, 1);
 
   assert.equal(result.user_id, 1);
   assert.equal(result.event_id, 1);
@@ -47,12 +47,12 @@ test('AC-2 successfully reserves an available place', (t) => {
   assert.equal(countRegistrations(db, 1), 1);
 });
 
-test('AC-3 rejects registration when event is full', (t) => {
+test('AC-3 rejects registration when event is full', async (t) => {
   const db = setup(t);
 
-  registerForEvent(db, 1, 1);
+  await registerForEvent(db, 1, 1);
 
-  assert.throws(
+  await assert.rejects(
     () => registerForEvent(db, 2, 1),
     {
       message: 'This event is full',
@@ -64,13 +64,13 @@ test('AC-3 rejects registration when event is full', (t) => {
   assert.equal(findRegistration(db, 2, 1), undefined);
 });
 
-test('AC-4 cancelling own registration frees a place', (t) => {
+test('AC-4 cancelling own registration frees a place', async (t) => {
   const db = setup(t);
 
-  registerForEvent(db, 1, 1);
-  registerForEvent(db, 2, 2);
+  await registerForEvent(db, 1, 1);
+  await registerForEvent(db, 2, 2);
 
-  const result = cancelRegistration(db, 1, 1);
+  const result = await cancelRegistration(db, 1, 1);
 
   assert.equal(result.cancelled, true);
   assert.equal(countRegistrations(db, 1), 0);
@@ -81,12 +81,12 @@ test('AC-4 cancelling own registration frees a place', (t) => {
   assert.equal(event.free_places, 1);
 });
 
-test('AC-4 rejects cancelling another users registration', (t) => {
+test('AC-4 rejects cancelling another users registration', async (t) => {
   const db = setup(t);
 
-  registerForEvent(db, 1, 1);
+  await registerForEvent(db, 1, 1);
 
-  assert.throws(
+  await assert.rejects(
     () => cancelRegistration(db, 2, 1),
     { status: 403 }
   );
@@ -95,12 +95,12 @@ test('AC-4 rejects cancelling another users registration', (t) => {
   assert.equal(countRegistrations(db, 1), 1);
 });
 
-test('Duplicate registration is rejected', (t) => {
+test('Duplicate registration is rejected', async (t) => {
   const db = setup(t);
 
-  registerForEvent(db, 1, 1);
+  await registerForEvent(db, 1, 1);
 
-  assert.throws(
+  await assert.rejects(
     () => registerForEvent(db, 1, 1),
     {
       message: 'Already registered',

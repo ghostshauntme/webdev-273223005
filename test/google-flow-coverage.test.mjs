@@ -207,9 +207,9 @@ test('AC-6 Google callback links account and creates session', async t => {
 
   const cookie = result.headers['Set-Cookie'][0].split(';')[0];
 
-  assert.equal(currentUser(db, {
+  assert.equal((await currentUser(db, {
     headers: { cookie }
-  }).id, user.id);
+  })).id, user.id);
 
   assert.equal(db.prepare(
     'SELECT COUNT(*) AS n FROM users'
@@ -232,11 +232,11 @@ test('AC-6 Google callback links account and creates session', async t => {
 
   assert.equal(signedIn.status, 302);
 
-  assert.equal(currentUser(db, {
+  assert.equal((await currentUser(db, {
     headers: {
       cookie: signedIn.headers['Set-Cookie'][0].split(';')[0]
     }
-  }).id, user.id);
+  })).id, user.id);
 });
 
 test('AC-6 Google callback handles provider failure', async t => {

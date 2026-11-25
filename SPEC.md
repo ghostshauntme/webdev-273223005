@@ -15,7 +15,8 @@ Club events.
 - No public self-registration in slice 1: use an account created during setup.
 
 ## Constraints
-- Node.js 22 built-in HTTP server and SQLite, with plain HTML, CSS and JavaScript.
+- Node.js 22 built-in HTTP server, SQLite for local development and tests, and PostgreSQL for production. The UI uses plain HTML, CSS and JavaScript.
+- HTTP, MCP and account setup use PostgreSQL when `DATABASE_URL` is set. With `NODE_ENV=production`, the URL is required. PostgreSQL startup applies the existing schema and seeds the initial events once.
 - Passwords are saved as salted scrypt hashes and never saved as readable text.
 - HTTP routes and future MCP tools must share business services; SQL stays in `src/data/`.
 - Session cookies are HttpOnly and SameSite=Lax; the event list is unavailable without a session.
@@ -46,7 +47,7 @@ Plain HTML, CSS and client-side JavaScript. Planned screens: local/Google sign-i
 - The browser sends a POST request from `public/app.js` to `/api/events/:id/register`.
 - The HTTP route in `src/routes/http.mjs` checks the current user through `src/services/auth.mjs`.
 - The registration service in `src/services/registrations.mjs` checks event capacity and existing registrations.
-- SQL queries run in `src/data/db.mjs` inside a database transaction.
+- Registration SQL runs in `src/data/` inside a transaction. PostgreSQL locks the event row before checking capacity. SQLite serializes write transactions on the connection.
 - A successful registration returns HTTP 201. A full event returns HTTP 409 without inserting a registration.
 - The MCP server calls the same registration service as the HTTP API.
 - The registrations table already existed after Exercise 2, so migration 001 added a timestamp and an index instead of creating a new table.

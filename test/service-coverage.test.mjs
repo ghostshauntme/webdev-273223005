@@ -66,11 +66,11 @@ function setup(t) {
   };
 }
 
-test('AC-6 created session identifies existing user', t => {
+test('AC-6 created session identifies existing user', async t => {
   const { db, organizer } = setup(t);
-  const session = createUserSession(db, organizer);
+  const session = await createUserSession(db, organizer);
 
-  const user = currentUser(db, {
+  const user = await currentUser(db, {
     headers: {
       cookie: `club_session=${session.token}`
     }
@@ -79,35 +79,35 @@ test('AC-6 created session identifies existing user', t => {
   assert.equal(user.id, organizer.id);
 });
 
-test('AC-6 password confirmation rejects invalid accounts', t => {
+test('AC-6 password confirmation rejects invalid accounts', async t => {
   const { db, organizer } = setup(t);
 
-  assert.equal(confirmPassword(
+  assert.equal(await confirmPassword(
     db, organizer, 'test-password'
   ), true);
 
-  assert.equal(confirmPassword(
+  assert.equal(await confirmPassword(
     db, organizer, 'wrong-password'
   ), false);
 
-  assert.equal(confirmPassword(
+  assert.equal(await confirmPassword(
     db, organizer, null
   ), false);
 
-  assert.equal(confirmPassword(
+  assert.equal(await confirmPassword(
     db, { ...organizer, id: -1 }, 'test-password'
   ), false);
 
-  assert.equal(confirmPassword(
+  assert.equal(await confirmPassword(
     db, { ...organizer, email: 'missing@example.test' },
     'test-password'
   ), false);
 });
 
-test('AC-2 registration rejects missing and past events', t => {
+test('AC-2 registration rejects missing and past events', async t => {
   const { db, member } = setup(t);
 
-  assert.throws(
+  await assert.rejects(
     () => registerForEvent(db, member.id, 999999),
     { status: 404, message: 'Event not found' }
   );
@@ -116,7 +116,7 @@ test('AC-2 registration rejects missing and past events', t => {
     'UPDATE events SET start_at=? WHERE id=1'
   ).run(new Date(Date.now() - 86400000).toISOString());
 
-  assert.throws(
+  await assert.rejects(
     () => registerForEvent(db, member.id, 1),
     { status: 409, message: 'This event has already started' }
   );
@@ -126,7 +126,7 @@ test('AC-2 registration rejects missing and past events', t => {
   ).get().n, 0);
 });
 
-test('AC-5 event service rejects invalid input', t => {
+test('AC-5 event service rejects invalid input', async t => {
   const { db, organizer, member } = setup(t);
 
   const valid = {
@@ -136,12 +136,12 @@ test('AC-5 event service rejects invalid input', t => {
     location: 'Sofia'
   };
 
-  assert.throws(
+  await assert.rejects(
     () => createEvent(db, null, valid),
     { status: 401 }
   );
 
-  assert.throws(
+  await assert.rejects(
     () => createEvent(db, member, valid),
     { status: 403 }
   );
@@ -165,7 +165,7 @@ test('AC-5 event service rejects invalid input', t => {
   ).get().n;
 
   for (const input of invalid) {
-    assert.throws(
+    await assert.rejects(
       () => createEvent(db, organizer, input),
       { status: 400 }
     );
@@ -176,7 +176,7 @@ test('AC-5 event service rejects invalid input', t => {
   ).get().n, before);
 });
 
-test('AC-6 Google identity cannot belong to another user', t => {
+test('AC-6 Google identity cannot belong to another user', async t => {
   const { db, organizer, member } = setup(t);
 
   const profile = {
@@ -185,9 +185,9 @@ test('AC-6 Google identity cannot belong to another user', t => {
     email_verified: true
   };
 
-  resolveGoogleUser(db, profile, organizer, true);
+  await resolveGoogleUser(db, profile, organizer, true);
 
-  assert.throws(
+  await assert.rejects(
     () => resolveGoogleUser(db, profile, member, true),
     /belongs to another user/
   );
@@ -198,13 +198,13 @@ test('AC-6 Google identity cannot belong to another user', t => {
     { ...profile, sub: '' },
     { ...profile, email: null }
   ]) {
-    assert.throws(
+    await assert.rejects(
       () => resolveGoogleUser(db, invalid),
       /not verified/
     );
   }
 
-  assert.throws(
+  await assert.rejects(
     () => resolveGoogleUser(db, {
       ...profile,
       sub: 'different-id',
@@ -213,7 +213,7 @@ test('AC-6 Google identity cannot belong to another user', t => {
     /requires confirmation/
   );
 
-  assert.throws(
+  await assert.rejects(
     () => resolveGoogleUser(db, {
       ...profile,
       sub: 'different-id'

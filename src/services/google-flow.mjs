@@ -5,7 +5,7 @@ import {
 } from './google-oauth.mjs';
 
 import { resolveGoogleUser } from './google-auth.mjs';
-import { createUserSession, confirmPassword } from './auth.mjs';
+import { createUserSession, confirmPassword, sessionCookie } from './auth.mjs';
 import { randomBytes } from 'node:crypto';
 
 export function createGoogleFlow(db) {
@@ -56,7 +56,7 @@ export function createGoogleFlow(db) {
 
         const password = new URLSearchParams(body).get('password');
 
-        if (!confirmPassword(db, user, password)) {
+        if (!(await confirmPassword(db, user, password))) {
           return reply(403, 'Incorrect password');
         }
       }
@@ -109,13 +109,11 @@ export function createGoogleFlow(db) {
         config, code, flow.verifier
       );
 
-      const account = resolveGoogleUser(
+      const account = await resolveGoogleUser(
         db, profile, user, flow.linking
       );
 
-      const session = createUserSession(db, account);
-
-      const { sessionCookie } = await import('./auth.mjs');
+      const session = await createUserSession(db, account);
 
       res.writeHead(302, {
         Location: '/events',

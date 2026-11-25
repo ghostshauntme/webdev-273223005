@@ -26,13 +26,13 @@ function setup(t) {
   return { db, user, profile };
 }
 
-test('AC-6 verified Google account links to existing user', t => {
+test('AC-6 verified Google account links to existing user', async t => {
   const { db, user, profile } = setup(t);
 
-  const linked = resolveGoogleUser(db, profile, user, true);
+  const linked = await resolveGoogleUser(db, profile, user, true);
   assert.equal(linked.id, user.id);
 
-  const signedIn = resolveGoogleUser(db, profile);
+  const signedIn = await resolveGoogleUser(db, profile);
   assert.equal(signedIn.id, user.id);
 
   assert.equal(
@@ -41,10 +41,10 @@ test('AC-6 verified Google account links to existing user', t => {
   );
 });
 
-test('AC-6 unverified Google identity is rejected', t => {
+test('AC-6 unverified Google identity is rejected', async t => {
   const { db, user, profile } = setup(t);
 
-  assert.throws(() => resolveGoogleUser(
+  await assert.rejects(() => resolveGoogleUser(
     db,
     { ...profile, email_verified: false },
     user,
@@ -52,14 +52,14 @@ test('AC-6 unverified Google identity is rejected', t => {
   ), /not verified/);
 });
 
-test('AC-6 linking requires explicit confirmation', t => {
+test('AC-6 linking requires explicit confirmation', async t => {
   const { db, user, profile } = setup(t);
 
-  assert.throws(() => resolveGoogleUser(
+  await assert.rejects(() => resolveGoogleUser(
     db, profile, user, false
   ), /requires confirmation/);
 
-  assert.throws(() => resolveGoogleUser(
+  await assert.rejects(() => resolveGoogleUser(
     db, profile
   ), /requires confirmation/);
 

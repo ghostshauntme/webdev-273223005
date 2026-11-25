@@ -77,15 +77,15 @@ test('sign out deletes the session', async () => {
 
 test('authentication handles invalid inputs, missing cookies and secure forwarding', async () => {
   const { authenticate, readSessionToken, currentUser, endSession, sessionCookie, clearSessionCookie } = await import('../src/services/auth.mjs');
-  assert.equal(authenticate(db, null, 'not-correct'), null);
-  assert.equal(authenticate(db, DEMO_EMAIL, null), null);
-  assert.equal(authenticate(db, DEMO_EMAIL, 'wrong-password'), null);
+  assert.equal(await authenticate(db, null, 'not-correct'), null);
+  assert.equal(await authenticate(db, DEMO_EMAIL, null), null);
+  assert.equal(await authenticate(db, DEMO_EMAIL, 'wrong-password'), null);
   const anonymous = { headers: {}, socket: { encrypted: false } };
   assert.equal(readSessionToken(anonymous), null);
   assert.equal(readSessionToken({ headers: { cookie: 'other=value' } }), null);
   assert.equal(readSessionToken({ headers: { cookie: 'club_session=broken' } }), null);
-  assert.equal(currentUser(db, anonymous), null);
-  endSession(db, anonymous);
+  assert.equal(await currentUser(db, anonymous), null);
+  await endSession(db, anonymous);
   assert.match(sessionCookie({ headers: {}, socket: { encrypted: true } }, 'test'), /; Secure$/);
   assert.match(clearSessionCookie({ headers: { 'x-forwarded-proto': 'https' }, socket: {} }), /; Secure$/);
   assert.doesNotMatch(sessionCookie(anonymous, 'test'), /; Secure$/);

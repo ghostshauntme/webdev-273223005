@@ -1,4 +1,4 @@
-import { openDatabase } from '../src/data/db.mjs';
+import { closeDatabase, openApplicationDatabase } from '../src/data/db.mjs';
 import { currentUser } from '../src/services/auth.mjs';
 import { listUpcomingEvents } from '../src/services/events.mjs';
 import {
@@ -87,7 +87,7 @@ tools.push(
 
 let db;
 
-function handleProjectTool(id, name, args) {
+async function handleProjectTool(id, name, args) {
   const token = process.env.MCP_SESSION_TOKEN || '';
 
   if (!/^[a-f0-9]{64}$/.test(token)) {
@@ -95,9 +95,9 @@ function handleProjectTool(id, name, args) {
   }
 
   try {
-    db ??= openDatabase();
+    db ??= await openApplicationDatabase();
 
-    const user = currentUser(db, {
+    const user = await currentUser(db, {
       headers: {
         cookie: `club_session=${token}`
       }
@@ -110,14 +110,14 @@ function handleProjectTool(id, name, args) {
     if (name === 'upcoming_events') {
       return textResult(
         id,
-        JSON.stringify(listUpcomingEvents(db))
+        JSON.stringify(await listUpcomingEvents(db))
       );
     }
 
     if (name === 'my_registrations') {
       return textResult(
         id,
-        JSON.stringify(listMyRegistrations(db, user.id))
+        JSON.stringify(await listMyRegistrations(db, user.id))
       );
     }
 
@@ -127,7 +127,7 @@ function handleProjectTool(id, name, args) {
         return protocolError(id, -32602, 'Invalid event ID');
       }
 
-      const registration = registerForEvent(
+      const registration = await registerForEvent(
         db, user.id, args.event_id
       );
 
@@ -334,21 +334,24 @@ const lines = readline.createInterface({
   input: process.stdin
 });
 
-lines.on('line', (line) => {
-  // Do not log potentially sensitive tool arguments.
+try {
+  for await (const line of lines) {
+    let msg;
 
-  let msg;
+    try {
+      msg = JSON.parse(line);
+    } catch {
+      send(protocolError(null, -32700, 'Parse error'));
+      continue;
+    }
 
-  try {
-    msg = JSON.parse(line);
-  } catch (error) {
-    send(protocolError(null, -32700, 'Parse error'));
-    return;
+    try {
+      const reply = await handle(msg);
+      if (reply) send(reply);
+    } catch {
+      send(protocolError(msg?.id ?? null, -32603, 'Internal error'));
+    }
   }
-
-  const reply = handle(msg);
-
-  if (reply) {
-    send(reply);
-  }
-});
+} finally {
+  if (db) await closeDatabase(db);
+}
