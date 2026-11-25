@@ -25,5 +25,8 @@
   },
   "homepage": "https://github.com/ghostshauntme/webdev-273223005#readme",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "pg": "^8.23.1"
+  }
 }
