@@ -63,6 +63,7 @@ export async function suggestPoster(
   let timer;
 
   try {
+    try {
     const output = await Promise.race([
       client(image, mimeType, key),
       new Promise((_, reject) => {
@@ -95,8 +96,9 @@ export async function suggestPoster(
         location: result.location.trim()
       }
     };
-  } catch {
-    return fallback;
+    } catch {
+      return fallback;
+    }
   } finally {
     clearTimeout(timer);
   }
