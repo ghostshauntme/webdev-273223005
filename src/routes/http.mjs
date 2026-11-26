@@ -21,6 +21,7 @@ const pages = {
   '/events': ['events.html', 'text/html; charset=utf-8'],
   '/app.js': ['app.js', 'text/javascript; charset=utf-8'],
   '/styles.css': ['styles.css', 'text/css; charset=utf-8'],
+  '/favicon.ico': ['favicon.ico', 'image/x-icon'],
 };
 
 function json(res, status, data, headers = {}) {
@@ -97,7 +98,9 @@ export function createApp(db) {
         if (!user) return redirect(res, '/login');
         return await sendPage(res, '/events');
       }
-      if (req.method === 'GET' && (route === '/app.js' || route === '/styles.css')) return await sendPage(res, route);
+      if (req.method === 'GET' && ['/app.js', '/styles.css', '/favicon.ico'].includes(route)) {
+        return await sendPage(res, route);
+      }
       if (req.method === 'POST' && route === '/api/login') {
         let payload;
         try { payload = await bodyAsJson(req); } catch { return json(res, 400, { error: 'Invalid JSON' }); }

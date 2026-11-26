@@ -266,17 +266,14 @@ if (list) {
             })
           });
 
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error || 'Creation failed');
-          }
+          await responseJson(response, 'Could not create the event. Try again.');
 
           createForm.reset();
+          posterStatus.textContent = '';
           status.textContent = 'Event created successfully!';
           await load();
         } catch (error) {
-          status.textContent = error.message;
+          status.textContent = errorMessage(error, 'Could not connect. Try again.');
         } finally {
           button.disabled = false;
         }
@@ -291,12 +288,17 @@ if (list) {
   load();
 
   document.querySelector('#logout').addEventListener(
-    'click', async () => {
+    'click', async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      document.querySelector('#account-message').textContent = 'Signing out...';
       try {
         await api('/api/logout', 'POST');
         window.location.assign('/login');
       } catch (error) {
-        message.textContent = errorMessage(error, 'Could not connect. Try again.');
+        document.querySelector('#account-message').textContent =
+          errorMessage(error, 'Could not connect. Try again.');
+        button.disabled = false;
       }
     }
   );

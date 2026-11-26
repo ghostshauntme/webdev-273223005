@@ -16,9 +16,9 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; }
-button, input { font: inherit; min-height: 44px; }
+button, input { font: inherit; min-width: 44px; min-height: 44px; }
 a { color: #263b83; }
-.panel a { display: inline-flex; align-items: center; min-height: 44px; }
+.panel a { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; }
 .shell { max-width: 1020px; margin: 5vh auto; padding: var(--space-lg); }
 .narrow { max-width: 470px; }
 .eyebrow { font-size: var(--type-small); letter-spacing: .16em; color: #5769a3; font-weight: 800; }
@@ -34,7 +34,15 @@ p { color: var(--text-muted); line-height: 1.6; }
 .panel { margin-top: var(--space-xl); }
 form { display: flex; flex-direction: column; gap: var(--space-sm); }
 label { font-weight: 650; margin-top: var(--space-xs); }
-input { width: 100%; min-width: 0; border: 1px solid #aebacb; padding: var(--space-sm); border-radius: 9px; }
+input { width: 100%; border: 1px solid #aebacb; padding: var(--space-sm); border-radius: 9px; }
+input[type="file"]::file-selector-button { font: inherit; min-width: 44px; min-height: 44px; }
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  background-size: 1em;
+}
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 button {
   margin-top: var(--space-sm);
@@ -70,6 +78,7 @@ button:disabled { cursor: default; }
   font-weight: 650;
 }
 .message { min-height: 1.6em; }
+#account-message:empty { margin: 0; }
 .subtitle { font-size: var(--type-large); }
 footer { margin-top: var(--space-xl); font-size: var(--type-small); color: var(--text-muted); }
 

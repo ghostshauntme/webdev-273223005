@@ -41,7 +41,7 @@ Club events.
 | `register_for_event` | Reserves a place when capacity permits and rejects fully booked events | the authenticated account owner |
 
 ## UI
-Plain HTML, CSS and client-side JavaScript. Planned screens: local/Google sign-in, upcoming event list, event detail and registration screen, organizer event management. Each screen needs loading, empty, error and success states. Only sign-in and the database-backed event list are implemented in slice 1. See `docs/UI.md` for the future checklist.
+The UI uses plain HTML, CSS and client-side JavaScript. Slice 1 introduced local sign-in and a database-backed event list. The list now supports booking and cancellation on event cards, and organizers have event creation and poster suggestion controls. Each screen needs loading, empty, error and success states. The [UI checklist](docs/UI.md) records which cases were verified and links the Exercise 4 screenshots.
 
 ## Architecture
 - The browser sends a POST request from `public/app.js` to `/api/events/:id/register`.
@@ -86,4 +86,4 @@ Plain HTML, CSS and client-side JavaScript. Planned screens: local/Google sign-i
 - Passed in local automated verification: AC-9, AC-10 and AC-11. The list is loaded from a real SQLite table and a session is required.
 - Gap in the initial requirement: it specified three upcoming rows but did not state which order to show them in.
 - Changed in this spec: AC-10 now explicitly requires date ordering. `src/data/db.mjs` sorts by event date, and the AC-10 test checks that ordering.
-- The student must still open the actual Codespace browser and perform the manual clicks before requesting the teaching assistant's approval.
+- Exercise 4 manual checks on Render covered password sign-in, reserving and cancelling a place, and data persistence after redeployment. The [readiness report](READINESS.md) records the deployment evidence and outstanding production checks.
